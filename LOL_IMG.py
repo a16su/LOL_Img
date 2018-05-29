@@ -3,7 +3,6 @@ import os
 import json
 import threading
 from multiprocessing import Pool
-import time
 
 
 class LolPic(object):
@@ -18,9 +17,6 @@ class LolPic(object):
             hreo_url = self._base_url + hreo_id + last_url
             t = threading.Thread(target=self.save_img, args=(hreo_url, hreo_name))
             threads.append(t)
-            # result = self.save_img(hreo_url, hreo_name)
-            # if result['code'] == 404:
-            #     break
         for thread in threads:
             thread.start()
         for thread in threads:
@@ -53,8 +49,7 @@ class LolPic(object):
         pool.join()
 
 
-if __name__ == '__main__':
-    s_time = time.time()
+if __name__ == '__main__'
     file_path = './lol_hreo.txt'
     f = open(file_path, encoding='utf-8').read()  # 加载英雄列表文件
     if f.startswith('\ufeff'):
@@ -62,5 +57,3 @@ if __name__ == '__main__':
     sid = json.loads(f)  # 转换为json文件
     hreo_img = LolPic()
     hreo_img.main()
-    e_time = time.time()
-    print('\n', e_time-s_time)
