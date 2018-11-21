@@ -1,3 +1,4 @@
+import re
 import requests
 import os
 import json
@@ -5,63 +6,85 @@ import threading
 from multiprocessing import Pool
 
 
-class LolPic(object):
+class LolPic:
     def __init__(self):
-        self.hreo_lsit = sid
+        self.hero_data = hero_data
         self._base_url = 'http://ossweb-img.qq.com/images/lol/web201310/skin/big'
 
-    def get_hero_image_ids(self, hero_id):
-        base_url = ''
-        pass  # TODO: 修改此处函数，将获取图片方式改为从英雄对应的js文件中获取皮肤id，从而获取皮肤URL，而不是原来的一个一个去拼凑
-              # TODO: 英雄对应的js文件URL为: 'https://lol.qq.com/biz/hero/{}.js'.format(hero_name)
-              # TODO: 对应的正则为: skins_id = re.findall('"skins":(.*?),"info"', html, re.S)[0]
+    def get_hero_image_ids(self, hero_name):
+        """
+        从英雄对应的js文件中获取皮肤id和名称
+        :param hero_name: 英雄的名称
+        :return: skin_id_dict :一个字典列表，元素为皮肤对应的数据
+        :retype: [{},{},...]
+        """
+        hero_js_url = 'https://lol.qq.com/biz/hero/{}.js'.format(hero_name)
+        html = requests.get(hero_js_url)
+        if html.status_code == 200:
+            html.encoding = 'utf-8'
+            skin_id_dict_str = re.findall('"skins":(.*?),"info"', html.text, re.S)[0]
+            skin_id_dict_list = json.loads(skin_id_dict_str)
+            yield from skin_id_dict_list  # type: [{}, {}]
+        else:
+            print(f'{hero_name}.js 请求出错')
 
-
-    def get_img_ulr(self, hero_id, hero_name):
+    def download_hero_image(self, hero_name):
+        """
+        图片下载函数，通过调用self.get_hero_image_ids来获取英雄对应的数据，
+        然后通过self.save_image来请求并保存图片
+        @:param hero_name :英雄的名字->Aatrox...
+        :type :str
+        @:return None
+        """
+        print(f'\n{"*"*20}开始下载 {hero_name}{"*"*20}')
         threads = list()
-        for i in range(20):
-            last_url = f'00{i}.jpg' if i < 10 else f'0{i}.jpg'
-            hreo_url = self._base_url + hero_id + last_url  # 这里通过
-            t = threading.Thread(target=self.save_img,
-                                 args=(hreo_url, hero_name))
-            threads.append(t)
+        for skin_data in self.get_hero_image_ids(hero_name):
+            hero_skin_url = self._base_url + skin_data["id"] + '.jpg'
+            hero_skin_name = skin_data["name"]
+            hero_skin_name = re.sub('[\\\\/:*?\"<>|]', '', hero_skin_name)
+            threads.append(threading.Thread(target=self.save_img,
+                                            args=(hero_skin_url, hero_skin_name, hero_name)))
         for thread in threads:
             thread.start()
         for thread in threads:
             thread.join()
-        print('\n')
+        print(f'{"*"*20}{hero_name} 下载完成{"*"*20}\n')
 
-    def save_img(self, url, name):
-        response = requests.get(url=url)
-        result = dict()
-        if os.path.exists(f'./lolimg/{name}'):
+    def save_img(self, hero_skin_url, hero_skin_name, hero_name):
+        """
+        图片保存函数
+        :param hero_skin_url: 英雄皮肤链接
+        :param hero_skin_name: 英雄皮肤名称
+        :param hero_name: 英雄名字，用来生成对应的文件夹
+        :return: None
+        """
+        response = requests.get(url=hero_skin_url)
+        if os.path.exists(f'./lolimg/{hero_name}'):
             pass
         else:
-            os.mkdir(f'./lolimg/{name}')
+            os.mkdir(f'./lolimg/{hero_name}')
         if response.status_code == 200:
-            with open(f'./lolimg/{name}/{url[-10:-4]}.jpg', 'wb') as f:
+            with open(f'./lolimg/{hero_name}/{hero_skin_name}.jpg', 'wb') as f:
                 f.write(response.content)
-            result['save'] = 200
-            result['code'] = 200
-            print(f'{name} 第{url[-6:-4]} 张下载完成\n')
+            print(f'{hero_name} {hero_skin_name} 下载完成')
         else:
-            result['code'] = 404
-
-        return result
+            print(f'{hero_name} {hero_skin_name} 下载失败，url为{hero_skin_url}')
 
     def main(self):
+        """
+        主函数，用来进行多进程调用，4个进程
+        :return: None
+        """
         pool = Pool(processes=4)
-        for hero_id, hero_name in self.hreo_lsit.items():
-            pool.apply_async(func=self.get_img_ulr, args=(hero_id, hero_name))
+        for _, hero_name in self.hero_data.items():
+            pool.apply_async(func=self.download_hero_image, args=(hero_name,))
         pool.close()
         pool.join()
 
 
 if __name__ == '__main__':
-    file_path = './lol_hreo.txt'
-    f = open(file_path, encoding='utf-8').read()  # 加载英雄列表文件
-    if f.startswith('\ufeff'):
-        f = f.encode('utf8')[3:].decode('utf8')  # 去掉BOM头
-    sid = json.loads(f)  # 转换为json文件
-    hreo_img = LolPic()
-    hreo_img.main()
+    fp = open('./lol_hero.json', 'r', encoding='utf-8')
+    hero_data = json.load(fp)  # 读取英雄的id和名称
+    fp.close()
+    hero_img = LolPic()
+    hero_img.main()
