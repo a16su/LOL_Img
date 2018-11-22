@@ -62,7 +62,7 @@ class LolPic:
         if os.path.exists(f'./lolimg/{hero_name}'):
             pass
         else:
-            os.mkdir(f'./lolimg/{hero_name}')
+            os.makedirs(f'./lolimg/{hero_name}')
         if response.status_code == 200:
             with open(f'./lolimg/{hero_name}/{hero_skin_name}.jpg', 'wb') as f:
                 f.write(response.content)
