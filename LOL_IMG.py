@@ -32,9 +32,9 @@ class LolPic:
         """
         图片下载函数，通过调用self.get_hero_image_ids来获取英雄对应的数据，
         然后通过self.save_image来请求并保存图片
-        @:param hero_name :英雄的名字->Aatrox...
+        :param hero_name :英雄的名字->Aatrox...
         :type :str
-        @:return None
+        :return None
         """
         print(f'\n{"*"*20}开始下载 {hero_name}{"*"*20}')
         threads = list()
