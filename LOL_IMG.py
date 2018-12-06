@@ -8,15 +8,16 @@ from multiprocessing import Pool
 
 class LolPic:
     def __init__(self):
-        self.hero_data = hero_data
-        self._base_url = 'http://ossweb-img.qq.com/images/lol/web201310/skin/big'
+        self.hero_data = hero_data  # 英雄数据 type: dict{"id":"name"}
+        self._base_url = 'http://ossweb-img.qq.com/images/lol/web201310/skin/big'  # 图片链接前缀
 
     def get_hero_image_ids(self, hero_name):
         """
         从英雄对应的js文件中获取皮肤id和名称
         :param hero_name: 英雄的名称
+        :type hero_name: str
         :return: skin_id_dict :一个字典列表，元素为皮肤对应的数据
-        :retype: [{},{},...]
+        :rtype: <generator> from a List[dict]
         """
         hero_js_url = 'https://lol.qq.com/biz/hero/{}.js'.format(hero_name)
         html = requests.get(hero_js_url)
@@ -24,7 +25,7 @@ class LolPic:
             html.encoding = 'utf-8'
             skin_id_dict_str = re.findall('"skins":(.*?),"info"', html.text, re.S)[0]
             skin_id_dict_list = json.loads(skin_id_dict_str)
-            yield from skin_id_dict_list  # type: [{}, {}]
+            yield from skin_id_dict_list
         else:
             print(f'{hero_name}.js 请求出错')
 
@@ -36,33 +37,33 @@ class LolPic:
         :type :str
         :return None
         """
-        print(f'\n{"*"*20}开始下载 {hero_name}{"*"*20}')
+        print(f'\n{"*" * 20}开始下载 {hero_name}{"*" * 20}')
         threads = list()
         for skin_data in self.get_hero_image_ids(hero_name):
             hero_skin_url = self._base_url + skin_data["id"] + '.jpg'
             hero_skin_name = skin_data["name"]
-            hero_skin_name = re.sub('[\\\\/:*?\"<>|]', '', hero_skin_name)
+            hero_skin_name = re.sub('[\\\\/:*?\"<>|]', '', hero_skin_name)  # 去掉图片名字中不能用于当做文件名的特殊字符
             threads.append(threading.Thread(target=self.save_img,
                                             args=(hero_skin_url, hero_skin_name, hero_name)))
         for thread in threads:
             thread.start()
         for thread in threads:
             thread.join()
-        print(f'{"*"*20}{hero_name} 下载完成{"*"*20}\n')
+        print(f'{"*" * 20}{hero_name} 下载完成{"*" * 20}\n')
 
     def save_img(self, hero_skin_url, hero_skin_name, hero_name):
         """
         图片保存函数
         :param hero_skin_url: 英雄皮肤链接
+        :type hero_skin_url: str
         :param hero_skin_name: 英雄皮肤名称
+        :type hero_skin_name: str
         :param hero_name: 英雄名字，用来生成对应的文件夹
+        :type hero_name: str
         :return: None
         """
         response = requests.get(url=hero_skin_url)
-        if os.path.exists(f'./lolimg/{hero_name}'):
-            pass
-        else:
-            os.makedirs(f'./lolimg/{hero_name}')
+        os.path.exists(f'./lolimg/{hero_name}') or os.makedirs(f'./lolimg/{hero_name}')  # 用来检测目录下是否存在保存图片的文件夹，没有就创建
         if response.status_code == 200:
             with open(f'./lolimg/{hero_name}/{hero_skin_name}.jpg', 'wb') as f:
                 f.write(response.content)
