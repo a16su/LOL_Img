@@ -3,6 +3,7 @@
 # Author: daning
 """
 该文件为lol英雄图片爬虫的aiohttp版本，尝试之作
+注释请看另一个文件
 流程和多线程版本一样
 """
 
@@ -27,25 +28,21 @@ async def get_hero_image_ids(hero_name):
 
 
 async def download_hero_image(hero_name):
-    print(f'\n{"*"*20}开始下载 {hero_name}{"*"*20}')
+    print(f'\n{"*" * 20}开始下载 {hero_name}{"*" * 20}')
     taske = list()
     for skin_data in await get_hero_image_ids(hero_name):
         hero_skin_url = base_url + skin_data["id"] + '.jpg'
         hero_skin_name = skin_data["name"]
         hero_skin_name = re.sub('[\\\\/:*?\"<>|]', '', hero_skin_name)
-        print(f'{hero_name}-> {hero_skin_name}')
-        # taske.append(asyncio.ensure_future(save_img(hero_skin_url,
-        #                                             hero_skin_name,
-        #                                             hero_name)))
-        # await asyncio.gather(*taske)
-    print(f'{"*"*20}{hero_name} 下载完成{"*"*20}\n')
+        taske.append(asyncio.ensure_future(save_img(hero_skin_url,
+                                                    hero_skin_name,
+                                                    hero_name)))
+        await asyncio.gather(*taske)
+    print(f'{"*" * 20}{hero_name} 下载完成{"*" * 20}\n')
 
 
 async def save_img(hero_skin_url, hero_skin_name, hero_name):
-    if os.path.exists(f'./lolimg/{hero_name}'):
-        pass
-    else:
-        os.makedirs(f'./lolimg/{hero_name}')
+    os.path.exists(f'./lolimage/{hero_name}') or os.makedirs(f'./lolimage/{hero_name}')
     async with aiohttp.ClientSession() as session:
         async with session.get(hero_skin_url) as response:
             if response.status == 200:
