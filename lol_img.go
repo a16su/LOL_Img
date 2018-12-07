@@ -19,6 +19,16 @@ import (
 const baseUrl = "http://ossweb-img.qq.com/images/lol/web201310/skin/big"
 
 func main() {
+	_, err := os.Stat("./lol_hero.json")
+	if err != nil {
+		if os.IsExist(err) {
+			goto start
+		} else {
+			fmt.Println("英雄数据文件不存在，开始下载。。。")
+			getHeroList()
+		}
+	}
+start:
 	runtime.GOMAXPROCS(10)
 	var wg sync.WaitGroup
 	data, err := readJson("./lol_hero.json")
@@ -32,6 +42,7 @@ func main() {
 		}
 	}()
 	wg.Wait()
+
 }
 
 func readJson(fileName string) (data map[int]string, err error) {
@@ -91,8 +102,7 @@ func getHeroImageIds(heroName string, wg *sync.WaitGroup) {
 
 func checkErr(err error, msg string) {
 	if err != nil {
-		fmt.Println(err, msg)
-		panic(msg)
+		panic(err.Error() + "\n" + msg)
 	}
 }
 
@@ -123,4 +133,22 @@ func downloadAndSaveImages(id, skinName, heroName string, wg2 *sync.WaitGroup) {
 	checkErr(err, "图片写入文件失败\n")
 	_ = file.Close()
 	fmt.Println(heroName, "-", skinName, "保存成功")
+}
+
+func getHeroList() {
+	defer func() {
+		ok := recover()
+		if ok != nil {
+			fmt.Println(ok)
+		}
+	}()
+	url := "http://lol.qq.com/biz/hero/champion.js"
+	body := requests(url)
+	com := regexp.MustCompile(`champion={"keys":({.*?}),"data"`)
+	temp := com.FindSubmatch(body)
+	file, err := os.OpenFile("./lol_hero.json", os.O_CREATE|os.O_WRONLY, 0644)
+	_, err = file.WriteString(string(temp[len(temp)-1]))
+	checkErr(err, "写入文件失败")
+	_ = file.Close()
+	fmt.Println("英雄数据下载成功")
 }
